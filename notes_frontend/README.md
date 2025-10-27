@@ -1,47 +1,68 @@
-# Astro Starter Kit: Minimal
+# Ocean Notes (Astro)
 
-```sh
-npm create astro@latest -- --template minimal
+A modern, responsive notes UI built with Astro. Create, view, edit, and manage notes with a polished Ocean Professional theme.
+
+## Features
+
+- Two-pane layout:
+  - Sidebar with searchable notes list and New button
+  - Main pane with title field and Markdown editor with live preview
+- Create, edit, and delete notes (with confirmation)
+- Local persistence via `localStorage` under key `app_notes_v1`
+- Responsive:
+  - Sidebar collapses under 768px, toggle via ☰ button
+  - Preview toggle for small screens
+- Ocean Professional theme (primary: `#2563EB`, secondary: `#F59E0B`) with subtle gradients, shadows, and rounded corners
+- Optional light/dark theme toggle
+
+## Getting started
+
+From this folder:
+
+```bash
+npm install
+npm run dev
 ```
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/withastro/astro/tree/latest/examples/minimal)
-[![Open with CodeSandbox](https://assets.codesandbox.io/github/button-edit-lime.svg)](https://codesandbox.io/p/sandbox/github/withastro/astro/tree/latest/examples/minimal)
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/withastro/astro?devcontainer_path=.devcontainer/minimal/devcontainer.json)
+The app will be available at http://localhost:3000 (configured in `astro.config.mjs`).
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+To build and preview:
 
-## 🚀 Project Structure
-
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+```bash
+npm run build
+npm run preview
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+## Usage
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+- Click "+ New" in the sidebar to create a note.
+- Select a note to edit. Edit the title in the top bar and the body in the editor.
+- Click "Preview" to show/hide the rendered Markdown.
+- Click the trash icon to delete the selected note (confirmation required).
+- Notes auto-save and persist across reloads.
 
-Any static assets, like images, can be placed in the `public/` directory.
+## Tech notes
 
-## 🧞 Commands
+- This app is frontend-only; no external APIs or environment variables are used.
+- State is managed via a small custom store (`src/lib/store.ts`) with pub/sub and persisted in `localStorage`.
+- Simple Markdown rendering is implemented in the editor (headings, bold, italic, inline code, links, bullet list). This avoids external dependencies.
 
-All commands are run from the root of the project, from a terminal:
+## Project structure
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+```
+src/
+  components/
+    Sidebar.astro
+    Editor.astro
+    ThemeToggle.astro
+  layouts/
+    Layout.astro
+  lib/
+    store.ts   # localStorage-backed notes store
+  pages/
+    index.astro
+```
 
-## 👀 Want to learn more?
+## License
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+MIT

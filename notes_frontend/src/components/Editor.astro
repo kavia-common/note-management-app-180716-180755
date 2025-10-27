@@ -1,0 +1,205 @@
+---
+---
+<section class="editor">
+  <div class="topbar">
+    <button id="mobile-open-sidebar" class="ghost-btn" aria-label="Open sidebar">☰</button>
+    <input id="note-title" type="text" placeholder="Untitled" />
+    <div class="actions">
+      <button id="toggle-preview" class="ghost-btn">Preview</button>
+      <button id="delete-note" class="danger-btn" title="Delete note">🗑</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <textarea id="note-content" placeholder="Write your note in Markdown..."></textarea>
+    <div id="preview" class="preview"></div>
+  </div>
+</section>
+
+<style>
+  .editor {
+    display: flex; flex-direction: column;
+    height: 100dvh;
+    background: var(--background, #f9fafb);
+  }
+  .topbar {
+    display: flex; gap: 12px; align-items: center;
+    padding: 12px 16px;
+    background: linear-gradient(120deg, rgba(37,99,235,0.08), rgba(245,158,11,0.08));
+    border-bottom: 1px solid var(--border-color);
+  }
+  .topbar input {
+    flex: 1;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--surface, #fff);
+    color: var(--text-color);
+    font-weight: 600;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .topbar input:focus { outline: none; border-color: #2563EB; box-shadow: 0 0 0 4px rgba(37,99,235,0.15); }
+  .ghost-btn {
+    border: 1px solid var(--border-color);
+    background: var(--surface);
+    color: var(--text-color);
+    border-radius: 10px;
+    padding: 8px 10px;
+    cursor: pointer;
+    transition: all .2s ease;
+  }
+  .ghost-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,.08); }
+  .danger-btn {
+    background: #EF4444;
+    color: white; border: none; padding: 8px 12px; border-radius: 10px; cursor: pointer;
+    transition: background .2s ease, transform .2s ease, box-shadow .2s ease;
+    box-shadow: 0 8px 16px rgba(239,68,68,.25);
+  }
+  .danger-btn:hover { background: #dc2626; transform: translateY(-1px); box-shadow: 0 12px 20px rgba(239,68,68,.35); }
+  .actions { display: flex; gap: 8px; }
+  .content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    height: 100%;
+  }
+  textarea {
+    width: 100%;
+    height: 100%;
+    border: none;
+    padding: 16px;
+    resize: none;
+    outline: none;
+    font-size: 16px;
+    line-height: 1.5;
+    background: var(--surface, #fff);
+    color: var(--text-color);
+  }
+  .preview {
+    padding: 16px;
+    background: var(--surface, #fff);
+    border-left: 1px solid var(--border-color);
+    overflow: auto;
+  }
+  .preview.hidden { display: none; }
+  .preview :where(h1,h2,h3,h4) { margin: 0.6em 0; }
+  .preview h1 { font-size: 28px; }
+  .preview h2 { font-size: 22px; }
+  .preview p, .preview li { color: var(--text-color); }
+  .preview code { background: rgba(37,99,235,0.08); padding: 0 .25em; border-radius: 4px; }
+  @media (max-width: 1024px) {
+    .content { grid-template-columns: 1fr; }
+    .preview { display: none; }
+    .preview.show-mobile { display: block; }
+  }
+</style>
+
+<script>
+  import { store } from '../lib/store';
+
+  // Minimal markdown rendering: headings, bold, italic, code, lists, links
+  function simpleMarkdown(md) {
+    if (!md) return '';
+    let html = md
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    html = html
+      .replace(/^###### (.*)$/gm, '<h6>$1</h6>')
+      .replace(/^##### (.*)$/gm, '<h5>$1</h5>')
+      .replace(/^#### (.*)$/gm, '<h4>$1</h4>')
+      .replace(/^### (.*)$/gm, '<h3>$1</h3>')
+      .replace(/^## (.*)$/gm, '<h2>$1</h2>')
+      .replace(/^# (.*)$/gm, '<h1>$1</h1>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
+      .replace(/^- (.*)$/gm, '<li>$1</li>')
+      .replace(/(\n\s*\n)/g, '</p><p>')
+      .replace(/^(.+)$/gm, (m) => {
+        if (m.startsWith('<h') || m.startsWith('<li>') || m.startsWith('</li>') || m.startsWith('</p>') || m.startsWith('<p>')) return m;
+        return `<p>${m}</p>`;
+      });
+
+    // Wrap consecutive <li> into <ul>
+    html = html.replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>').replace(/<\/ul>\s*<ul>/g, '');
+    return html;
+  }
+
+  function mount() {
+    const titleEl = document.getElementById('note-title') as HTMLInputElement | null;
+    const contentEl = document.getElementById('note-content') as HTMLTextAreaElement | null;
+    const preview = document.getElementById('preview') as HTMLDivElement | null;
+    const delBtn = document.getElementById('delete-note');
+    const togglePreview = document.getElementById('toggle-preview');
+    const openSidebar = document.getElementById('mobile-open-sidebar');
+
+    function render() {
+      const note = store.getSelected();
+      if (!note) {
+        if (titleEl) titleEl.value = '';
+        if (contentEl) contentEl.value = '';
+        if (preview) preview.innerHTML = '<p style="color:var(--text-secondary)">No note selected. Create a new note from the sidebar.</p>';
+        return;
+      }
+      if (titleEl && titleEl !== document.activeElement) titleEl.value = note.title;
+      if (contentEl && contentEl !== document.activeElement) contentEl.value = note.content;
+      if (preview) preview.innerHTML = simpleMarkdown(note.content || '');
+    }
+
+    titleEl?.addEventListener('input', (e) => {
+      const note = store.getSelected();
+      if (!note) return;
+      store.update(note.id, { title: (e.target as HTMLInputElement).value });
+    });
+
+    // Save on input with gentle debounce
+    let t: any;
+    contentEl?.addEventListener('input', (e) => {
+      const value = (e.target as HTMLTextAreaElement).value;
+      const note = store.getSelected();
+      if (!note) return;
+      clearTimeout(t);
+      t = setTimeout(() => {
+        store.update(note.id, { content: value });
+      }, 150);
+      if (preview) preview.innerHTML = simpleMarkdown(value);
+    });
+
+    delBtn?.addEventListener('click', () => {
+      const note = store.getSelected();
+      if (!note) return;
+      const ok = confirm('Delete this note? This action cannot be undone.');
+      if (ok) {
+        store.delete(note.id);
+      }
+    });
+
+    togglePreview?.addEventListener('click', () => {
+      if (!preview) return;
+      const isMobile = window.innerWidth <= 1024;
+      if (isMobile) {
+        preview.classList.toggle('show-mobile');
+      } else {
+        preview.classList.toggle('hidden');
+      }
+    });
+
+    openSidebar?.addEventListener('click', () => {
+      const sidebar = document.querySelector('.sidebar');
+      sidebar?.setAttribute('data-collapsed', 'false');
+    });
+
+    const unsub = store.subscribe(render);
+    render();
+    return () => unsub();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', mount);
+  } else {
+    mount();
+  }
+</script>

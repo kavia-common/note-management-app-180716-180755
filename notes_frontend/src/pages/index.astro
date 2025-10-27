@@ -1,11 +1,65 @@
 ---
-import Welcome from '../components/Welcome.astro';
 import Layout from '../layouts/Layout.astro';
-
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+import Sidebar from '../components/Sidebar.astro';
+import { store } from '../lib/store';
 ---
 
 <Layout>
-	<Welcome />
+  <div class="app">
+    <Sidebar notes={store.getNotes()} selectedId={store.getSelected()?.id ?? null} />
+    <main class="main">
+      <div class="gradient-header"></div>
+      <!-- Main editor -->
+      <div class="pane">
+        <client:only>
+          <!-- The Editor component uses only client-side JS -->
+        </client:only>
+      </div>
+    </main>
+  </div>
+
+  <!-- Mount Editor via inline island-like hydration -->
+  <script type="module">
+    import Editor from '../components/Editor.astro';
+    // No-op; the component self-initializes.
+  </script>
 </Layout>
+
+<style>
+  :root {
+    --primary: #2563EB;
+    --secondary: #F59E0B;
+    --background: #f9fafb;
+    --surface: #ffffff;
+    --text: #111827;
+  }
+
+  .app {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    min-height: 100dvh;
+    background: var(--background);
+  }
+  .main {
+    position: relative;
+    background: var(--background);
+  }
+  .gradient-header {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 160px;
+    background: linear-gradient(135deg, rgba(37,99,235,0.12), rgba(107,114,128,0.06));
+    filter: blur(0.5px);
+    pointer-events: none;
+  }
+  .pane {
+    position: relative;
+    z-index: 0;
+  }
+
+  @media (max-width: 768px) {
+    .app {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
